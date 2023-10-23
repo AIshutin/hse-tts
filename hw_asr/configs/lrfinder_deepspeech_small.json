@@ -1,5 +1,5 @@
 {
-  "name": "one_batch_test",
+  "name": "all_clean_deepspeech",
   "n_gpu": 1,
   "preprocessing": {
     "sr": 16000,
@@ -34,7 +34,7 @@
         "args": {
           "min_snr_db": 5.0,
           "max_snr_db":25.0,
-          "p": 0.2,
+          "p": 0.0,
           "sample_rate": 16000
         }
       },
@@ -50,21 +50,31 @@
     "spectrogram": []
   },
   "arch": {
-    "type": "BaselineModel",
+    "type": "DeepSpeechModel2",
     "args": {
-      "n_feats": 128,
-      "fc_hidden": 512
+      "n_channels": 128,
+      "fc_hidden": 512,
+      "rnn_hidden": 256,
+      "rnn_layers": 1
     }
   },
   "data": {
     "train": {
-      "batch_size": 2,
+      "batch_size": 128,
       "num_workers": 0,
       "datasets": [
         {
-          "type": "LibrispeechDataset",
+          "type": "LJspeechDataset",
           "args": {
             "part": "train",
+            "max_audio_length": 20.0,
+            "max_text_length": 200
+          }
+        },
+        {
+          "type": "LibrispeechDataset",
+          "args": {
+            "part": "train-other-500",
             "max_audio_length": 20.0,
             "max_text_length": 200
           }
@@ -72,7 +82,12 @@
       ]
     },
     "val": {
-      "batch_size": 2,
+      "batch_sampler": {
+        "type": "GroupLengthBatchSampler",
+        "args": {
+          "batch_size": 128
+        }
+      },
       "num_workers": 0,
       "datasets": [
         {
@@ -89,13 +104,15 @@
   "optimizer": {
     "type": "SGD",
     "args": {
-      "lr": 1e-2,
-      "momentum": 0.9
+      "lr": 1e-6,
+      "momentum": 0.99
     }
   },
   "loss": {
     "type": "CTCLoss",
-    "args": {}
+    "args": {
+      "zero_infinity": true
+    }
   },
   "metrics": [
     {
@@ -108,7 +125,7 @@
       "type": "BeamSearchWERMetric",
       "args": {
         "name": "WER (bs)",
-        "beam_size": 20
+        "beam_size": 5
       }
     },
     {
@@ -121,30 +138,27 @@
       "type": "BeamSearchCERMetric",
       "args": {
         "name": "CER (bs)",
-        "beam_size": 20
+        "beam_size": 5
       }
     }
   ],
   "lr_scheduler": {
-    "type": "OneCycleLR",
+    "type": "StepLR",
     "args": {
-      "steps_per_epoch": 100,
-      "epochs": 51,
-      "anneal_strategy": "cos",
-      "max_lr": 1e-2,
-      "pct_start": 0.2
+      "gamma": 1.02,
+      "step_size": 1
     }
   },
   "trainer": {
-    "epochs": 50,
+    "epochs": 10,
     "save_dir": "saved/",
-    "save_period": 5,
+    "save_period": 1,
     "verbosity": 2,
     "monitor": "min val_loss",
     "early_stop": 100,
     "visualize": "wandb",
     "wandb_project": "asr_project",
-    "len_epoch": 100,
+    "len_epoch": 500,
     "grad_norm_clip": 10
   }
 }

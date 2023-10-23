@@ -10,6 +10,9 @@ from torch.utils.data import Dataset
 
 from hw_asr.base.base_text_encoder import BaseTextEncoder
 from hw_asr.utils.parse_config import ConfigParser
+import wandb
+import librosa
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +55,17 @@ class BaseDataset(Dataset):
             "text_encoded": self.text_encoder.encode(data_dict["text"]),
             "audio_path": audio_path,
         }
+    
+    def log_audio_samples(self, cnt):
+        idx = np.sort(np.random.randint(0, len(self), size=(cnt,)))
+        arr = []
+        for ind in idx:
+            data_dict = self._index[ind]
+            audio_path = data_dict["path"]
+            audio_wave = self.load_audio(audio_path)
+            arr.append([audio_path] + self.process_wave(audio_wave, 
+                                                        log_name=str(type(self)) + ':' + str(ind)))
+        return arr
 
     @staticmethod
     def _sort_index(index):
@@ -68,8 +82,9 @@ class BaseDataset(Dataset):
             audio_tensor = torchaudio.functional.resample(audio_tensor, sr, target_sr)
         return audio_tensor
 
-    def process_wave(self, audio_tensor_wave: Tensor):
+    def process_wave(self, audio_tensor_wave: Tensor, log_name=None):
         with torch.no_grad():
+            initial_wave = audio_tensor_wave.clone()
             if self.wave_augs is not None:
                 audio_tensor_wave = self.wave_augs(audio_tensor_wave)
             wave2spec = self.config_parser.init_obj(
@@ -79,9 +94,53 @@ class BaseDataset(Dataset):
             audio_tensor_spec = wave2spec(audio_tensor_wave)
             if self.spec_augs is not None:
                 audio_tensor_spec = self.spec_augs(audio_tensor_spec)
+            
+        if log_name is not None:
+            to_log = [log_name]
+            sr = self.config_parser["preprocessing"]["sr"]
+            to_log.append( 
+                wandb.Audio(
+                    initial_wave.numpy()[0], 
+                    caption=log_name, 
+                    sample_rate=sr)
+            )
+
+            to_log.append(
+                wandb.Audio(
+                    audio_tensor_wave.numpy()[0], 
+                    caption=log_name, 
+                    sample_rate=sr)
+            )
+
+            t = audio_tensor_spec.clone()
+            # t.requires_grad = True
+            
+            if 'MelSpectrogram' == self.config_parser["preprocessing"]["spectrogram"].get('type', ""):    
+                n_stft = self.config_parser["preprocessing"]["spectrogram"].get('args', {}).get('n_stft', 201)
+                n_fft = (n_stft - 1) * 2
+                mel2spec = torchaudio.transforms.InverseMelScale(sample_rate=sr, n_stft=n_stft)
+                t = mel2spec(t)
+            else:
+                raise NotImplemented()
+            
+            spec2audio = torchaudio.transforms.GriffinLim(n_fft=n_fft)
+            wave = spec2audio(t).flatten().numpy()
+
+            to_log.append( 
+                wandb.Audio(
+                    wave,
+                    caption=log_name, 
+                    sample_rate=sr)
+            )
+
+            return to_log
+
+        with torch.no_grad():
             if self.log_spec:
                 audio_tensor_spec = torch.log(audio_tensor_spec + 1e-5)
             return audio_tensor_wave, audio_tensor_spec
+
+            
 
     @staticmethod
     def _filter_records_from_dataset(

@@ -17,7 +17,7 @@
         "args": {
           "min_transpose_semitones": -5.0,
           "max_transpose_semitones": 3.0,      
-          "p": 0.2,
+          "p": 0.0,
           "sample_rate": 16000 
         }
       },
@@ -26,7 +26,7 @@
         "args": {
           "min_rate": 0.9,
           "max_rate": 1.2,
-          "p": 0.2
+          "p": 0.0
         }
       },
       {
@@ -34,7 +34,7 @@
         "args": {
           "min_snr_db": 5.0,
           "max_snr_db":25.0,
-          "p": 0.2,
+          "p": 0.0,
           "sample_rate": 16000
         }
       },
@@ -43,17 +43,19 @@
         "args": {
           "min_gain_in_db": -15.0,
           "max_gain_in_db": 5.0,
-          "p": 0.2
+          "p": 0.0
         }
       }
     ],
     "spectrogram": []
   },
   "arch": {
-    "type": "BaselineModel",
+    "type": "DeepSpeechModel2",
     "args": {
-      "n_feats": 128,
-      "fc_hidden": 512
+      "n_channels": 128,
+      "fc_hidden": 2048,
+      "rnn_hidden": 1024,
+      "rnn_layers": 3
     }
   },
   "data": {
@@ -64,9 +66,10 @@
         {
           "type": "LibrispeechDataset",
           "args": {
-            "part": "train",
+            "part": "dev-clean",
             "max_audio_length": 20.0,
-            "max_text_length": 200
+            "max_text_length": 200,
+            "limit": 10
           }
         }
       ]
@@ -80,7 +83,8 @@
           "args": {
             "part": "dev-clean",
             "max_audio_length": 20.0,
-            "max_text_length": 200
+            "max_text_length": 200,
+            "limit": 10
           }
         }
       ]
@@ -90,7 +94,7 @@
     "type": "SGD",
     "args": {
       "lr": 1e-2,
-      "momentum": 0.9
+      "momentum": 0.99
     }
   },
   "loss": {

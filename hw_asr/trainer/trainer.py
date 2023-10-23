@@ -36,7 +36,8 @@ class Trainer(BaseTrainer):
             len_epoch=None,
             skip_oom=True,
     ):
-        super().__init__(model, criterion, metrics, optimizer, config, device)
+        self.lr_scheduler = lr_scheduler
+        super().__init__(model, criterion, metrics, optimizer, config, device, dataloaders['train'])
         self.skip_oom = skip_oom
         self.text_encoder = text_encoder
         self.config = config
@@ -49,11 +50,10 @@ class Trainer(BaseTrainer):
             self.train_dataloader = inf_loop(self.train_dataloader)
             self.len_epoch = len_epoch
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items() if k != "train"}
-        self.lr_scheduler = lr_scheduler
-        self.log_step = 50
+        self.log_step = 100 #50
 
         self.train_metrics = MetricTracker(
-            "loss", "grad norm", *[m.name for m in self.metrics], writer=self.writer
+            "loss", "grad norm", *[m.name for m in self.metrics if '(bs)' not in m.name], writer=self.writer
         )
         self.evaluation_metrics = MetricTracker(
             "loss", *[m.name for m in self.metrics], writer=self.writer
@@ -155,7 +155,8 @@ class Trainer(BaseTrainer):
 
         metrics.update("loss", batch["loss"].item())
         for met in self.metrics:
-            metrics.update(met.name, met(**batch))
+            if met.name in metrics.tracked_metrics:
+                metrics.update(met.name, met(**batch))
         return batch
 
     def _evaluation_epoch(self, epoch, part, dataloader):

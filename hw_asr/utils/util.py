@@ -58,6 +58,7 @@ def prepare_device(n_gpu_use):
 class MetricTracker:
     def __init__(self, *keys, writer=None):
         self.writer = writer
+        self.tracked_metrics = set(keys)
         self._data = pd.DataFrame(index=keys, columns=["total", "counts", "average"])
         self.reset()
 
