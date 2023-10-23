@@ -46,6 +46,7 @@ def get_dataloaders(configs: ConfigParser, text_encoder: BaseTextEncoder):
             batch_sampler = configs.init_obj(params["batch_sampler"], batch_sampler_module,
                                              data_source=dataset)
             bs, shuffle = 1, False
+            drop_last = False
         else:
             raise Exception()
 
