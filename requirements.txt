@@ -16,5 +16,5 @@ torchaudio==2.0.2
 pillow
 librosa==0.10.1
 transformers==4.29.1
-tokenizers==0.14.1 # 0.13.3
-https://github.com/kpu/kenlm/archive/master.zip
+tokenizers==0.14.1
+gdown==4.7.1
