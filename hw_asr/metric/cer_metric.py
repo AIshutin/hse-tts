@@ -42,7 +42,7 @@ class BeamSearchCERMetric(BaseMetric):
             for log_prob_vec, length, target_text in zip(predictions, lengths, text):
                 target_text = BaseTextEncoder.normalize_text(target_text)
                 if hasattr(self.text_encoder, "ctc_beam_search"):
-                    pred_text = self.text_encoder.ctc_beam_search(log_prob_vec[:length], self.beam_size)[0].text
+                    pred_text = self.text_encoder.ctc_beam_search(log_prob_vec[:length].exp(), self.beam_size)[0].text
                 else:
                     logging.warning('CTC Beam Search is not implemented, but required in BeamSearchWERMetric')
                     pred_text = self.text_encoder.decode(log_prob_vec[:length])

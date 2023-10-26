@@ -2,11 +2,58 @@
 
 ## Installation guide
 
-< Write your installation guide here >
-
-```shell
-pip install -r ./requirements.txt
 ```
+pip install -r ./requirements.txt
+pip install https://github.com/kpu/kenlm/archive/master.zip
+wget https://www.openslr.org/resources/11/3-gram.arpa.gz -O 3-gram.arpa.gz
+gzip -d 3-gram.arpa.gz
+wget https://openslr.elda.org/resources/11/librispeech-lexicon.txt -O librispeech-lexicon.txt
+wget https://www.openslr.org/resources/11/librispeech-vocab.txt -O librispeech-vocab.txt
+```
+
+## Usage guide
+
+To train:
+```shell
+python3 train.py -c hw_asr/configs/all_deepspeech_small.json
+```
+
+To measure quality:
+```shell
+gdown "https://drive.google.com/file/d/1DftKTAVPW7tHauL8H9cTzph3ozMMkE3F/view?usp=sharing" -O default_test_model/checkpoint.pth --fuzzy
+python3 test.py -c default_test_model/config.json -r default_test_model/checkpoint.pth -b 1
+```
+
+To run unit tests:
+```shell
+python3 -m unittest hw_asr
+```
+
+
+## What's done?
+
+- Augmentations (Pitch Shift, Gaussian Noise, Gaussian Noise SNR, Time Stretch)
+- Deepspeech-like and Deepspeech2-like architectures
+- Sortagrad (not used in the final model)
+- Length-based batch-loader (not used in the final model)
+- BPE encoding (not used in the final model)
+- Audio logging
+- LRFinder config
+- Beam search (BS) and beam search + language model (LM)
+
+See [report](https://wandb.ai/aishutin/asr_project/reports/---Vmlldzo1Nzg4MzQz?accessToken=bjh11ugotng1gel7btqq822g7rrpxjzqdah0azzytfs6z3qxau13osht7cr589is) (in Russian) for more information
+
+## Results
+
+**Librispeech: test-clean**
+
+|metric|argmax|BS    |BS+LM|
+|------|------|------|-----|
+|CER   |45.46%|      |     |
+|WER   |94.96%|      |     |
+
+
+# HW information
 
 ## Recommended implementation order
 
@@ -35,7 +82,7 @@ the workflow.
    python -m unittest discover hw_asr/tests
    ```
 3) Make sure `test.py` works fine and works as expected. You should create files `default_test_config.json` and your
-   installation guide should download your model checpoint and configs in `default_test_model/checkpoint.pth`
+   installation guide should download your model checkpoint and configs in `default_test_model/checkpoint.pth`
    and `default_test_model/config.json`.
    ```shell
    python test.py \

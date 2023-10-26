@@ -2,7 +2,6 @@ import unittest
 
 from hw_asr.text_encoder.ctc_char_text_encoder import CTCCharTextEncoder
 
-
 class TestTextEncoder(unittest.TestCase):
     def test_ctc_decode(self):
         text_encoder = CTCCharTextEncoder()
@@ -14,5 +13,4 @@ class TestTextEncoder(unittest.TestCase):
         self.assertIn(decoded_text, true_text)
 
     def test_beam_search(self):
-        # TODO: (optional) write tests for beam search
         pass

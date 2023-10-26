@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+checkpoint.pt
+output.json
+*.arpa
+librispeech-*.txt
+
 # C extensions
 *.so
 
