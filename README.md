@@ -5,8 +5,8 @@
 ```
 pip install -r ./requirements.txt
 pip install https://github.com/kpu/kenlm/archive/master.zip
-wget https://www.openslr.org/resources/11/3-gram.arpa.gz -O 3-gram.arpa.gz
-gzip -d 3-gram.arpa.gz
+wget https://www.openslr.org/resources/11/3-gram.arpa.gz -O 4-gram.arpa.gz
+gzip -d 4-gram.arpa.gz
 wget https://openslr.elda.org/resources/11/librispeech-lexicon.txt -O librispeech-lexicon.txt
 wget https://www.openslr.org/resources/11/librispeech-vocab.txt -O librispeech-vocab.txt
 ```

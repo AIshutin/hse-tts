@@ -216,25 +216,6 @@ if __name__ == "__main__":
     config["data"]["test"]["batch_size"] = args.batch_size
     config["data"]["test"]["n_jobs"] = args.jobs
 
-
-    '''
-    from tqdm import tqdm
-    best_cer = 100
-    best_alpha = None
-    best_beta = None
-    for alpha in [0.0, 0.001, 0.01, 0.1, 0.5, 1.0, 1.5, 2.0]:
-        for beta in tqdm([0.0, 0.001, 0.01, 0.1, 0.5, 1.0, 1.5, 2.0]):
-            config["text_encoder"]["args"]["alpha"] = alpha
-            config["text_encoder"]["args"]["beta"] = beta
-            cer = main(config, args.output)
-            if cer < best_cer:
-                best_cer = cer
-                best_alpha = alpha
-                best_beta = beta
-    print(best_cer, best_alpha, best_beta)
-    exit(0)
-    '''
-
     if args.alpha is not None:
         config["text_encoder"]["args"]["alpha"] = args.alpha
     if args.beta is not None:

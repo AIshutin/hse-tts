@@ -23,7 +23,6 @@ class CTCCharTextEncoder(CharTextEncoder):
         vocab = [self.EMPTY_TOK] + list(self.alphabet)
         self.ind2char = dict(enumerate(vocab))
         self.char2ind = {v: k for k, v in self.ind2char.items()}
-        print('ALPHA', alpha, 'BETA', beta)
         self.decoder = build_ctcdecoder([''] + [el.upper() for el in vocab[1:]],
                                         kenlm_model_path=lm_path,
                                         alpha=alpha,
