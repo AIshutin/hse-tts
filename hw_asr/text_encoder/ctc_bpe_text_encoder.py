@@ -17,9 +17,8 @@ class Hypothesis(NamedTuple):
 class CTCBPETextEncoder(BPETextEncoder):
     EMPTY_TOK = "<pad>"
 
-    def __init__(self, file, **kwargs):
-        super().__init__(file=file, pad_token=self.EMPTY_TOK, alpha=0.5,
-                         beta=1.0, lm_path="3-gram.arpa", )
+    def __init__(self, file, alpha=0.5, beta=1.0, lm_path="3-gram.arpa", **kwargs):
+        super().__init__(file=file, pad_token=self.EMPTY_TOK)
         alphabet_dict = self.tokenizer.get_vocab()
         alphabet_list = []
         for el, i in sorted(alphabet_dict.items(), key=lambda x: x[1]):
@@ -66,7 +65,7 @@ class CTCBPETextEncoder(BPETextEncoder):
 
         return hypos
 
-    def ctc_beam_search_fast(self, probs: torch.tensor,
+    def ctc_beam_search_lm(self, probs: torch.tensor,
                         beam_size: int = 100) -> List[Hypothesis]:
         """
         Performs beam search and returns a list of pairs (hypothesis, hypothesis probability).
