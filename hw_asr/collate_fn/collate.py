@@ -21,12 +21,14 @@ def collate_fn(dataset_items: List[dict]):
         result_batch[key] = [el[key] for el in dataset_items]
     
 
+    # print('DI', len(dataset_items))
     #print('spectr', dataset_items[0]['spectrogram'].min(), dataset_items[0]['spectrogram'].max(), dataset_items[0]['spectrogram'].mean())
     #print('audio', dataset_items[0]['audio'].min(), dataset_items[0]['audio'].max(), dataset_items[0]['audio'].mean())
 
     for key in 'audio', 'spectrogram', 'text_encoded':
         tensors = [el[key] for el in dataset_items]
         lengths = [el.shape[-1] for el in tensors]
+        # print(key, 'length', lengths)
         
         result_batch[key + '_length'] = torch.tensor(lengths)
         value = 0

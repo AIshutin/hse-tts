@@ -11,7 +11,7 @@ from hw_asr.base.base_text_encoder import BaseTextEncoder
 
 class CharTextEncoder(BaseTextEncoder):
 
-    def __init__(self, alphabet: List[str] = None):
+    def __init__(self, alphabet: List[str] = None, **kwargs):
         if alphabet is None:
             alphabet = list(ascii_lowercase + ' ')
         self.alphabet = alphabet

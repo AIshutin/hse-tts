@@ -2,7 +2,7 @@ from typing import List, NamedTuple
 
 import torch
 
-from .char_text_encoder import CharTextEncoder
+from .bpe_text_encoder import BPETextEncoder
 from pyctcdecode import build_ctcdecoder
 import numpy as np
 
@@ -12,26 +12,30 @@ class Hypothesis(NamedTuple):
     prob: float
 
 
-class CTCCharTextEncoder(CharTextEncoder):
-    EMPTY_TOK = "^"
+class CTCBPETextEncoder(BPETextEncoder):
+    EMPTY_TOK = "<pad>"
 
-    def __init__(self, alphabet: List[str] = None, **kwargs):
-        super().__init__(alphabet)
-        vocab = [self.EMPTY_TOK] + list(self.alphabet)
-        self.ind2char = dict(enumerate(vocab))
-        self.char2ind = {v: k for k, v in self.ind2char.items()}
-        self.decoder = build_ctcdecoder([''] + vocab[1:])
+    def __init__(self, file, **kwargs):
+        super().__init__(file=file, pad_token=self.EMPTY_TOK)
+        alphabet_dict = self.tokenizer.get_vocab()
+        alphabet_list = []
+        for el, i in sorted(alphabet_dict.items(), key=lambda x: x[1]):
+            assert(len(alphabet_list) == i)
+            alphabet_list.append(el)
+        assert(alphabet_list[0] == self.EMPTY_TOK)
+
+        self.decoder = build_ctcdecoder(alphabet_list)
 
     def ctc_decode(self, inds: List[int]) -> str:
-        s = []
-        last_char = ""
-        for c in self.decode(inds):
-            if c == last_char:
+        ids = []
+        last_id = ""
+        for c in inds:
+            if c == last_id:
                 continue
-            if c != self.EMPTY_TOK:
-                s.append(c)
-            last_char = c
-        return ''.join(s).replace('  ', ' ')
+            if c != 0:
+                ids.append(c)
+            last_id = c
+        return self.decode(ids)
 
     def ctc_beam_search(self, probs: torch.tensor,
                         beam_size: int = 100) -> List[Hypothesis]:

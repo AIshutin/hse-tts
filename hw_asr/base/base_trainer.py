@@ -16,7 +16,7 @@ class BaseTrainer:
     """
 
     def __init__(self, model: BaseModel, criterion, metrics, optimizer, config, device, 
-                 train_dataloader, audio_samples_cnt=10):
+                 train_dataloader, audio_samples_cnt=2):
         self.device = device
         self.config = config
         self.logger = config.get_logger("trainer", config["trainer"]["verbosity"])
