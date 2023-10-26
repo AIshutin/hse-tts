@@ -50,7 +50,7 @@ class Trainer(BaseTrainer):
             self.train_dataloader = inf_loop(self.train_dataloader)
             self.len_epoch = len_epoch
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items() if k != "train"}
-        self.log_step = 100 #50
+        self.log_step = 100
 
         self.train_metrics = MetricTracker(
             "loss", "grad norm", *[m.name for m in self.metrics if '(bs)' not in m.name], writer=self.writer
