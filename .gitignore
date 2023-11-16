@@ -2,11 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
+waveglow/
+FastSpeech/
+*.tar.gz
+*.patch
 
 checkpoint.pt
 output.json
 *.arpa
 librispeech-*.txt
+*.pth
 
 # C extensions
 *.so

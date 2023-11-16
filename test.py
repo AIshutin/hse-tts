@@ -6,12 +6,12 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-import hw_asr.model as module_model
-from hw_asr.trainer import Trainer
-from hw_asr.utils import ROOT_PATH
-from hw_asr.utils.object_loading import get_dataloaders
-from hw_asr.utils.parse_config import ConfigParser
-from hw_asr.metric.utils import calc_cer, calc_wer
+import tts.model as module_model
+from tts.trainer import Trainer
+from tts.utils import ROOT_PATH
+from tts.utils.object_loading import get_dataloaders
+from tts.utils.parse_config import ConfigParser
+from tts.metric.utils import calc_cer, calc_wer
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
 
