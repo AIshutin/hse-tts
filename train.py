@@ -5,13 +5,13 @@ import warnings
 import numpy as np
 import torch
 
-import hw_asr.loss as module_loss
-import hw_asr.metric as module_metric
-import hw_asr.model as module_arch
-from hw_asr.trainer import Trainer
-from hw_asr.utils import prepare_device
-from hw_asr.utils.object_loading import get_dataloaders
-from hw_asr.utils.parse_config import ConfigParser
+import tts.loss as module_loss
+import tts.metric as module_metric
+import tts.model as module_arch
+from tts.trainer import Trainer
+from tts.utils import prepare_device
+from tts.utils.object_loading import get_dataloaders
+from tts.utils.parse_config import ConfigParser
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
