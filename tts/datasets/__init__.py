@@ -1,9 +1,7 @@
-from tts.datasets.custom_audio_dataset import CustomAudioDataset, CustomDirAudioDataset
+from tts.datasets.custom_text_dataset import CustomTextDataset
 from tts.datasets.ljspeech_dataset import LJspeechDataset
 
 __all__ = [
-    "LibrispeechDataset",
-    "CustomDirAudioDataset",
-    "CustomAudioDataset",
+    "CustomTextDataset",
     "LJspeechDataset",
 ]

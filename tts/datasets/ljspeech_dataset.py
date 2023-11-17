@@ -80,7 +80,7 @@ class LJspeechDataset(BaseDataset):
                 for i, line in enumerate(f):
                     i += 1
                     w_id = line.split('|')[0]
-                    w_text = " ".join(line.split('|')[1:]).strip()
+                    w_text = line.split('|')[1].strip()
                     wav_path = wav_dir / f"{w_id}.wav"
                     if not wav_path.exists(): # elem in another part
                         continue

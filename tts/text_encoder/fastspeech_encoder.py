@@ -21,7 +21,6 @@ class FastSpeechEncoder(BaseTextEncoder):
         return len(_id_to_symbol) + 1
 
     def encode(self, text) -> Tensor:
-        text = self.normalize_text(text)
         seq = text_to_sequence(text, self.cleaners)
         out = Tensor([[el + 1 for el in seq]])
         return out
