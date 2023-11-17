@@ -14,6 +14,4 @@ class BaseTextEncoder:
 
     @staticmethod
     def normalize_text(text: str):
-        text = text.lower()
-        text = re.sub(r"[^a-z ]", "", text)
         return text

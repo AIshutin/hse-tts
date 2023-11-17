@@ -74,7 +74,8 @@ class Trainer(BaseTrainer):
         """
         Move all necessary tensors to the HPU
         """
-        for tensor_for_gpu in ["spectrogram", "text_encoded"]:
+        for tensor_for_gpu in ["spectrogram", "text_encoded", "src_pos", "mel_pos", "alignment", 
+                               "pitch", "energy", "alpha_duration", "alpha_pitch", "alpha_energy"]:
             batch[tensor_for_gpu] = batch[tensor_for_gpu].to(device)
         return batch
 
@@ -136,8 +137,11 @@ class Trainer(BaseTrainer):
         log = last_train_metrics
 
         for part, dataloader in self.evaluation_dataloaders.items():
-            val_log = self._evaluation_epoch(epoch, part, dataloader)
-            log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+            if part == "test":
+                val_log = self._evaluation_epoch_test(epoch, part, dataloader)
+            else:
+                val_log = self._evaluation_epoch(epoch, part, dataloader)
+                log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
 
         return log
 
@@ -164,6 +168,57 @@ class Trainer(BaseTrainer):
             if met.name in metrics.tracked_metrics:
                 metrics.update(met.name, met(**batch))
         return batch
+    
+    def process_test_batch(self, batch):
+        batch = self.move_batch_to_device(batch, self.device)
+        outputs = self.model(text_encoded=batch['text_encoded'],
+                             src_pos=batch['src_pos'],
+                             alpha_duration=batch['alpha_duration'],
+                             alpha_pitch=batch['alpha_pitch'],
+                             alpha_energy=batch['alpha_energy'])
+        assert(type(outputs) is dict)
+        batch.update(outputs)
+        return batch
+
+
+    def _evaluation_epoch_test(self, epoch, part, dataloader):
+        """
+        Validate after training an epoch
+
+        :param epoch: Integer, current training epoch.
+        :return: A log that contains information about validation
+        """
+        self.model.eval()
+        self.evaluation_metrics.reset()
+        with torch.no_grad():
+            batches = []
+            for batch_idx, batch in tqdm(
+                    enumerate(dataloader),
+                    desc=part,
+                    total=len(dataloader),
+            ):
+                batch = self.process_test_batch(batch)
+                batches.append(batch)
+            
+            self.writer.set_step(epoch * self.len_epoch, part)
+            rows = {}
+            for i, batch in enumerate(batches):
+                with torch.no_grad():
+                    spectrogram_hat = batch['spectrogram_hat'].T.squeeze(-1).unsqueeze(0)
+                    synthesized_hat = waveglow.inference.inference(spectrogram_hat, self.waveglow)
+                text = batch['text']
+                audio_path = batch['audio_path']
+                self.writer
+                rows[str(i) + audio_path[0]] = {
+                    "text": text,
+                    "synthesized_hat": make_audio_item(synthesized_hat, self.writer, self.config),
+                    "duration": batch['alpha_duration'][0].item(),
+                    "pitch": batch['alpha_pitch'][0].item(),
+                    "energy": batch['alpha_energy'][0].item(),
+                    "name": audio_path
+                }
+            self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
+
 
     def _evaluation_epoch(self, epoch, part, dataloader):
         """
@@ -186,8 +241,9 @@ class Trainer(BaseTrainer):
                     metrics=self.evaluation_metrics,
                 )
             self.writer.set_step(epoch * self.len_epoch, part)
-            self._log_scalars(self.evaluation_metrics)
-            self._log_predictions(**batch)
+            if part != "test":
+                self._log_scalars(self.evaluation_metrics)
+            self._log_predictions(**batch, is_test=part == "test")
             self._log_spectrogram(batch["spectrogram"], batch['spectrogram_hat'])
 
         # add histogram of model parameters to the tensorboard

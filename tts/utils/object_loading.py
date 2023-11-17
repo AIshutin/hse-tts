@@ -5,7 +5,7 @@ from torch.utils.data import ConcatDataset, DataLoader
 import tts.datasets
 from tts import batch_sampler as batch_sampler_module
 from tts.base.base_text_encoder import BaseTextEncoder
-from tts.collate_fn.collate import collate_fn
+from tts.collate_fn.collate import collate_fn_tensor
 from tts.utils.parse_config import ConfigParser
 
 
@@ -52,7 +52,7 @@ def get_dataloaders(configs: ConfigParser, text_encoder: BaseTextEncoder):
 
         # create dataloader
         dataloader = DataLoader(
-            dataset, batch_size=bs, collate_fn=collate_fn,
+            dataset, batch_size=bs, collate_fn=collate_fn_tensor,
             shuffle=shuffle, num_workers=num_workers,
             batch_sampler=batch_sampler, drop_last=drop_last
         )
