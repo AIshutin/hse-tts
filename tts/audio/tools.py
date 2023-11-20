@@ -9,10 +9,12 @@ from . import stft as stft
 from . import hparams_audio as hparams
 from .audio_processing import griffin_lim
 
+'''
 _stft = stft.TacotronSTFT(
     hparams.filter_length, hparams.hop_length, hparams.win_length,
     hparams.n_mel_channels, hparams.sampling_rate, hparams.mel_fmin,
     hparams.mel_fmax)
+'''
 
 
 def load_wav_to_torch(full_path):

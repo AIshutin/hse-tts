@@ -66,10 +66,12 @@ class BaseDataset(Dataset):
             "alignment": alignment,
             "idx": data_dict['idx'],
         }
+        assert(alignment.shape[-1] == text.shape[-1])
         if self.return_energy:
             out_dict['energy'] = Tensor(np.load(data_dict['energy'])).reshape(1, -1)
         if self.return_pitch:
-            out_dict['pitch'] = Tensor(np.load(data_dict['pitch'])).reshape(1, -1)
+            out_dict['pitch'] = out_dict['energy'].clone()
+            # out_dict['pitch'] = Tensor(np.load(data_dict['pitch'])).reshape(1, -1)
 
         return out_dict
 
