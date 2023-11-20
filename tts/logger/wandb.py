@@ -21,6 +21,7 @@ class WanDBWriter:
                 project=config['trainer'].get('wandb_project'),
                 config=config.config
             )
+            wandb.run.log_code('.')
             self.wandb = wandb
 
         except ImportError:

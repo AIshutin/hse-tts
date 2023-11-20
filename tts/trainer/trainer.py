@@ -62,10 +62,12 @@ class Trainer(BaseTrainer):
         self.log_step = 100
 
         self.train_metrics = MetricTracker(
-            "loss", "grad norm", *[m.name for m in self.metrics if '(bs)' not in m.name], writer=self.writer
+            "loss", "loss_spectrogram", "loss_pitch", "loss_align", "loss_energy",
+            "grad norm", *[m.name for m in self.metrics if '(bs)' not in m.name], writer=self.writer
         )
         self.evaluation_metrics = MetricTracker(
-            "loss", *[m.name for m in self.metrics], writer=self.writer
+            "loss", "loss_spectrogram", "loss_pitch", "loss_align", "loss_energy",
+            *[m.name for m in self.metrics], writer=self.writer
         )
         self.waveglow = get_WaveGlow().to(device)
 
@@ -95,55 +97,56 @@ class Trainer(BaseTrainer):
         self.model.train()
         self.train_metrics.reset()
         self.writer.add_scalar("epoch", epoch)
-        for batch_idx, batch in enumerate(
-                tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
-        ):
-            try:
-                batch = self.process_batch(
-                    batch,
-                    is_train=True,
-                    metrics=self.train_metrics,
-                )
-            except RuntimeError as e:
-                if "out of memory" in str(e) and self.skip_oom:
-                    self.logger.warning("OOM on batch. Skipping batch.")
-                    for p in self.model.parameters():
-                        if p.grad is not None:
-                            del p.grad  # free some memory
-                    torch.cuda.empty_cache()
-                    continue
-                else:
-                    raise e
-            self.train_metrics.update("grad norm", self.get_grad_norm())
-            if batch_idx % self.log_step == 0:
-                self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-                self.logger.debug(
-                    "Train Epoch: {} {} Loss: {:.6f}".format(
-                        epoch, self._progress(batch_idx), batch["loss"].item()
+        with torch.autograd.set_detect_anomaly(True):
+            for batch_idx, batch in enumerate(
+                    tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
+            ):
+                try:
+                    batch = self.process_batch(
+                        batch,
+                        is_train=True,
+                        metrics=self.train_metrics,
                     )
-                )
-                self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
-                )
-                self._log_predictions(**batch)
-                self._log_spectrogram(batch["spectrogram"], batch['spectrogram_hat'])
-                self._log_scalars(self.train_metrics)
-                # we don't want to reset train metrics at the start of every epoch
-                # because we are interested in recent train metrics
-                last_train_metrics = self.train_metrics.result()
-                self.train_metrics.reset()
-            if batch_idx >= self.len_epoch:
-                break
-        log = last_train_metrics
+                except RuntimeError as e:
+                    if "out of memory" in str(e) and self.skip_oom:
+                        self.logger.warning("OOM on batch. Skipping batch.")
+                        for p in self.model.parameters():
+                            if p.grad is not None:
+                                del p.grad  # free some memory
+                        torch.cuda.empty_cache()
+                        continue
+                    else:
+                        raise e
+                self.train_metrics.update("grad norm", self.get_grad_norm())
+                if batch_idx % self.log_step == 0:
+                    self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+                    self.logger.debug(
+                        "Train Epoch: {} {} Loss: {:.6f}".format(
+                            epoch, self._progress(batch_idx), batch["loss"].item()
+                        )
+                    )
+                    self.writer.add_scalar(
+                        "learning rate", self.lr_scheduler.get_last_lr()[0]
+                    )
+                    self._log_predictions(**batch)
+                    self._log_spectrogram(batch["spectrogram"], batch['spectrogram_hat'])
+                    self._log_scalars(self.train_metrics)
+                    # we don't want to reset train metrics at the start of every epoch
+                    # because we are interested in recent train metrics
+                    last_train_metrics = self.train_metrics.result()
+                    self.train_metrics.reset()
+                if batch_idx >= self.len_epoch:
+                    break
+            log = last_train_metrics
 
-        for part, dataloader in self.evaluation_dataloaders.items():
-            if part == "test":
-                val_log = self._evaluation_epoch_test(epoch, part, dataloader)
-            else:
-                val_log = self._evaluation_epoch(epoch, part, dataloader)
-                log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+            for part, dataloader in self.evaluation_dataloaders.items():
+                if part == "test":
+                    val_log = self._evaluation_epoch_test(epoch, part, dataloader)
+                else:
+                    val_log = self._evaluation_epoch(epoch, part, dataloader)
+                    log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
 
-        return log
+            return log
 
     def process_batch(self, batch, is_train: bool, metrics: MetricTracker):
         batch = self.move_batch_to_device(batch, self.device)
@@ -162,8 +165,12 @@ class Trainer(BaseTrainer):
             self.optimizer.step()
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
-
+        
         metrics.update("loss", batch["loss"].item())
+        metrics.update("loss_spectrogram", batch["loss_spectrogram"].item())
+        metrics.update("loss_pitch", batch["loss_pitch"].item())
+        metrics.update("loss_align", batch["loss_align"].item())
+        metrics.update("loss_energy", batch["loss_energy"].item())
         for met in self.metrics:
             if met.name in metrics.tracked_metrics:
                 metrics.update(met.name, met(**batch))
@@ -247,8 +254,8 @@ class Trainer(BaseTrainer):
             self._log_spectrogram(batch["spectrogram"], batch['spectrogram_hat'])
 
         # add histogram of model parameters to the tensorboard
-        for name, p in self.model.named_parameters():
-            self.writer.add_histogram(name, p, bins="auto")
+        #for name, p in self.model.named_parameters():
+        #    self.writer.add_histogram(name, p, bins="auto")
         return self.evaluation_metrics.result()
 
     def _progress(self, batch_idx):

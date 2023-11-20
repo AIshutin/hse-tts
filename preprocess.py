@@ -18,6 +18,9 @@ from tqdm import tqdm
 from pathlib import Path
 import json
 import scipy
+from tts.audio.hparams_audio import filter_length, hop_length, win_length, sampling_rate, \
+                                    n_mel_channels, mel_fmax
+from torchaudio.transforms import InverseMelScale
 
 
 def extract_pitch(wave, fs):
@@ -46,8 +49,12 @@ def wave2pitch(wave, sr):
     return fixed_pitch
 
 
+inverseMel = InverseMelScale(n_stft=filter_length, n_mels=n_mel_channels, f_max=mel_fmax)
+
 def spectrogram2energy(spectrogram):
-    return spectrogram.norm(2, dim=-1).reshape(-1).numpy()
+    spectrogram = spectrogram[0]
+    out = inverseMel(spectrogram.T).T
+    return out.norm(2, dim=-1).reshape(-1).numpy()
 
 
 def main(config):
@@ -63,16 +70,28 @@ def main(config):
     max_pitch    = -1e9
     min_energy   = 1e9
     max_energy   = -1e9 
+    
+    for t in ['val']:
+        for el in tqdm(dataloaders[t].dataset):
+            path = Path(el['audio_path'])
+            energy_path = path.parent / (str(el['idx']) + '-energy.npy')
+            pitch_path = path.parent / (str(el['idx']) + '-pitch.npy')
+            #fixed_pitch = pitch_scaler.transform(wave2pitch(el['audio'], sr).reshape(-1, 1)).reshape(-1)
+            energy = spectrogram2energy(el['spectrogram'])
+            np.save(energy_path, energy)
+            #np.save(pitch_path, fixed_pitch)
 
-    '''
-    for el in tqdm(dataloaders['train'].dataset):
-        energy = spectrogram2energy(el['spectrogram'])
+    for i, el in enumerate(tqdm(dataloaders['train'].dataset)):
+        assert(el['spectrogram'].shape[-1] == 80)
         pitch = wave2pitch(el['audio'], sr).reshape(-1)
         pitch_scaler.partial_fit(pitch.reshape(-1, 1))
         max_pitch = max(max_pitch, pitch.max())
         min_pitch = min(min_pitch, pitch.min())
         max_energy = max(max_energy, energy.max().item())
         min_energy = min(min_energy, energy.min().item())
+        if i % 100 == 0:
+            print(f"Min energy: {min_energy} . Max energy: {max_energy}")
+
     
     print(f"Min pitch: {min_pitch} . Max pitch: {max_pitch}")
     print(f"Min energy: {min_energy} . Max energy: {max_energy}")
@@ -86,19 +105,22 @@ def main(config):
             "mean_pitch": pitch_scaler.mean_[0],
             'std_pitch': pitch_scaler.scale_[0]
         }, file)
+    
     '''
     kwargs = json.load(open(config['name'] + '.json'))
     pitch_scaler.mean_ = np.array([kwargs['mean_pitch']])
     pitch_scaler.scale_ = np.array([kwargs['std_pitch']])
-
+    '''
+    
     for t in ['val', 'train']:
         for el in tqdm(dataloaders[t].dataset):
             path = Path(el['audio_path'])
-            pitch_path = path.parent / (str(el['idx']) + '-pitch.npy')
             energy_path = path.parent / (str(el['idx']) + '-energy.npy')
+            pitch_path = path.parent / (str(el['idx']) + '-pitch.npy')
             fixed_pitch = pitch_scaler.transform(wave2pitch(el['audio'], sr).reshape(-1, 1)).reshape(-1)
+            energy = spectrogram2energy(el['spectrogram'])
+            np.save(energy_path, energy)
             np.save(pitch_path, fixed_pitch)
-            np.save(energy_path, spectrogram2energy(el['spectrogram']))
     
 
 if __name__ == "__main__":

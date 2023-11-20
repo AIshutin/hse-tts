@@ -1,0 +1,164 @@
+{
+  "name": "fastspeach2-test",
+  "n_gpu": 1,
+  "preprocessing": {
+    "sr": 22050
+  },
+  "arch": {
+    "type": "FastSpeech2Model",
+    "args": {
+      "vocab_size": 300,
+      "max_seq_len": 3000,
+      "encoder_dim": 256,
+      "encoder_n_layer": 4,
+      "encoder_head": 2,
+      "encoder_conv1d_filter_size": 1024,
+      "decoder_dim": 256,
+      "decoder_n_layer": 4,
+      "decoder_head": 2,
+      "decoder_conv1d_filter_size": 1024,
+      "fft_conv1d_kernel": [9, 1],
+      "fft_conv1d_padding": [4, 0],
+      "x_predictor_filter_size": 256,
+      "x_predictor_kernel_size": 3,
+      "energy_emb_dim": 256,
+      "min_energy": 17.76,
+      "max_energy": 91.42,
+      "n_quant_energy": 256,
+      "dropout": 0.1,
+      "PAD": 0,
+      "num_mels": 80
+    }
+  },
+  "data": {
+    "train": {
+      "batch_size": 16,
+      "num_workers": 0,
+      "datasets": [
+        {
+          "type": "LJspeechDataset",
+          "args": {
+            "part": "train",
+            "max_audio_length": 20.0,
+            "max_text_length": 200,
+            "limit": 17
+          }
+        }
+      ]
+    },
+    "val": {
+      "batch_size": 10,
+      "num_workers": 0,
+      "datasets": [
+        {
+          "type": "LJspeechDataset",
+          "args": {
+            "part": "train",
+            "max_audio_length": 20.0,
+            "max_text_length": 200,
+            "limit": 17
+          }
+        }
+      ]
+    },
+    "test": {
+      "batch_size": 1,
+      "num_workers": 0,
+      "datasets": [
+        {
+          "type": "CustomTextDataset",
+          "args": {
+            "texts": [
+              "a warrant was issued for his apprehension, which was effected at kennington on the 24th march.",
+              "when the judge assumed the black cap"
+            ],
+            "configurations": [
+              {
+                "duration": 2.0,
+                "energy": 1.0,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.2,
+                "energy": 1.0,
+                "pitch": 1.0
+              },
+              {
+                "duration": 0.8,
+                "energy": 1.0,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.0,
+                "energy": 1.2,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.0,
+                "energy": 0.8,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.0,
+                "energy": 1.0,
+                "pitch": 1.2
+              },
+              {
+                "duration": 1.0,
+                "energy": 1.0,
+                "pitch": 0.8
+              },
+              {
+                "duration": 1.2,
+                "energy": 1.2,
+                "pitch": 1.2
+              },
+              {
+                "duration": 0.8,
+                "energy": 0.8,
+                "pitch": 0.8
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "optimizer": {
+    "type": "Adam",
+    "args": {
+      "weight_decay": 1e-6,
+      "lr": 1e-3,
+      "betas": [0.9, 0.98],
+      "eps": 1e-9
+    }
+  },
+  "loss": {
+    "type": "FastSpeech2Loss",
+    "args": {}
+  },
+  "metrics": [
+  ],
+  "lr_scheduler": {
+    "type": "OneCycleLR",
+    "args": {
+      "steps_per_epoch": 100,
+      "epochs": 21,
+      "anneal_strategy": "cos",
+      "max_lr": 1e-3,
+      "pct_start": 0.1
+    }
+  },
+  "trainer": {
+    "epochs": 20,
+    "save_dir": "saved/",
+    "save_period": 1,
+    "verbosity": 2,
+    "monitor": "min val_loss",
+    "early_stop": 100,
+    "visualize": "wandb",
+    "wandb_project": "tts_project",
+    "len_epoch": 100,
+    "grad_norm_clip": 1
+  }
+}
