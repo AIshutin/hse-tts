@@ -45,7 +45,7 @@ def wave2pitch(wave, sr):
     interpolate_f = scipy.interpolate.interp1d(nonzero_pitch_y, nonzero_pitch_x, kind="linear",
                                                fill_value=(nonzero_pitch_y[0], nonzero_pitch_y[-1]),
                                                bounds_error=False)
-    fixed_pitch = np.log(interpolate_f(np.arange(0, pitch.shape[-1])))
+    fixed_pitch = np.log1p(interpolate_f(np.arange(0, pitch.shape[-1])))
     return fixed_pitch
 
 
@@ -65,62 +65,43 @@ def main(config):
     dataloaders = get_dataloaders(config, text_encoder)
     sr = dataloaders['train'].dataset.config_parser["preprocessing"]["sr"]
 
-    pitch_scaler = StandardScaler()
+    # pitch_scaler = StandardScaler()
     min_pitch    = 1e9
     max_pitch    = -1e9
     min_energy   = 1e9
     max_energy   = -1e9 
-    
-    for t in ['val']:
-        for el in tqdm(dataloaders[t].dataset):
+
+    for dtype in ['train', 'val']:
+        for i, el in enumerate(tqdm(dataloaders[dtype].dataset)):
+            assert(el['spectrogram'].shape[-1] == 80)
             path = Path(el['audio_path'])
             energy_path = path.parent / (str(el['idx']) + '-energy.npy')
             pitch_path = path.parent / (str(el['idx']) + '-pitch.npy')
-            #fixed_pitch = pitch_scaler.transform(wave2pitch(el['audio'], sr).reshape(-1, 1)).reshape(-1)
+
+            pitch = wave2pitch(el['audio'], sr).reshape(-1)
+            np.save(pitch_path, pitch)
+
             energy = spectrogram2energy(el['spectrogram'])
             np.save(energy_path, energy)
-            #np.save(pitch_path, fixed_pitch)
 
-    for i, el in enumerate(tqdm(dataloaders['train'].dataset)):
-        assert(el['spectrogram'].shape[-1] == 80)
-        pitch = wave2pitch(el['audio'], sr).reshape(-1)
-        pitch_scaler.partial_fit(pitch.reshape(-1, 1))
-        max_pitch = max(max_pitch, pitch.max())
-        min_pitch = min(min_pitch, pitch.min())
-        max_energy = max(max_energy, energy.max().item())
-        min_energy = min(min_energy, energy.min().item())
-        if i % 100 == 0:
-            print(f"Min energy: {min_energy} . Max energy: {max_energy}")
+            if dtype == "train":
+                max_energy = max(max_energy, energy.max().item())
+                min_energy = min(min_energy, energy.min().item())
+                max_pitch = max(max_pitch, pitch.max())
+                min_pitch = min(min_pitch, pitch.min())
 
-    
+                if i % 100 == 0:
+                    print(f"Min energy: {min_energy} . Max energy: {max_energy}")
+
     print(f"Min pitch: {min_pitch} . Max pitch: {max_pitch}")
     print(f"Min energy: {min_energy} . Max energy: {max_energy}")
-    print(f"Mean Pitch : {pitch_scaler.mean_[0]} . Std pitch: {pitch_scaler.scale_[0]}")
     with open(config['name'] + '.json', 'w') as file:
         json.dump({
             'min_pitch': min_pitch,
             'max_pitch': max_pitch,
             "min_energy": min_energy,
             "max_energy": max_energy,
-            "mean_pitch": pitch_scaler.mean_[0],
-            'std_pitch': pitch_scaler.scale_[0]
         }, file)
-    
-    '''
-    kwargs = json.load(open(config['name'] + '.json'))
-    pitch_scaler.mean_ = np.array([kwargs['mean_pitch']])
-    pitch_scaler.scale_ = np.array([kwargs['std_pitch']])
-    '''
-    
-    for t in ['val', 'train']:
-        for el in tqdm(dataloaders[t].dataset):
-            path = Path(el['audio_path'])
-            energy_path = path.parent / (str(el['idx']) + '-energy.npy')
-            pitch_path = path.parent / (str(el['idx']) + '-pitch.npy')
-            fixed_pitch = pitch_scaler.transform(wave2pitch(el['audio'], sr).reshape(-1, 1)).reshape(-1)
-            energy = spectrogram2energy(el['spectrogram'])
-            np.save(energy_path, energy)
-            np.save(pitch_path, fixed_pitch)
     
 
 if __name__ == "__main__":
