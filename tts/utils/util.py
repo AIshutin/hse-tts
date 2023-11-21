@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import torch
 import os
+import yaml
 
 
 ROOT_PATH = Path(__file__).absolute().resolve().parent.parent.parent
@@ -40,6 +41,13 @@ def write_json(content, fname):
     fname = Path(fname)
     with fname.open("wt") as handle:
         json.dump(content, handle, indent=4, sort_keys=False)
+
+
+def write_yaml(content, fname):
+    with Path(fname).open("wt") as file:
+        text = yaml.dump(content, default_flow_style=False)
+        print(text)
+        print(text, file=file)
 
 
 def inf_loop(data_loader):

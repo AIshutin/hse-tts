@@ -6,7 +6,9 @@ waveglow/
 FastSpeech/
 *.tar.gz
 *.patch
-
+outputs
+default_test_model/*
+synthesized_audios/*
 checkpoint.pt
 output.json
 *.arpa

@@ -9,8 +9,6 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 from tts.base.base_text_encoder import BaseTextEncoder
-from tts.utils.parse_config import ConfigParser
-from ..text import text_to_sequence
 from scipy import signal
 import pyworld as pw
 
@@ -28,7 +26,7 @@ class BaseDataset(Dataset):
             self,
             index,
             text_encoder: BaseTextEncoder,
-            config_parser: ConfigParser,
+            sr: int,
             limit=None,
             max_audio_length=None,
             max_text_length=None,
@@ -36,7 +34,6 @@ class BaseDataset(Dataset):
             return_energy=True,
     ):
         self.text_encoder = text_encoder
-        self.config_parser = config_parser
 
         self._assert_index_is_valid(index)
         index = self._filter_records_from_dataset(index, max_audio_length, max_text_length, limit)
@@ -46,6 +43,7 @@ class BaseDataset(Dataset):
         self._index: List[dict] = index
         self.return_pitch = return_pitch
         self.return_energy = return_energy
+        self.sr = sr
 
     def __getitem__(self, ind):
         data_dict = self._index[ind]
@@ -59,7 +57,7 @@ class BaseDataset(Dataset):
         out_dict = {
             "audio": audio_wave,
             "spectrogram": audio_spec,
-            "duration": audio_wave.size(1) / self.config_parser["preprocessing"]["sr"],
+            "duration": audio_wave.size(1) / self.sr,
             "text": data_dict["text"],
             "text_encoded": text,
             "audio_path": audio_path,
@@ -85,7 +83,7 @@ class BaseDataset(Dataset):
     def load_audio(self, path):
         audio_tensor, sr = torchaudio.load(path)
         audio_tensor = audio_tensor[0:1, :]  # remove all channels but the first
-        target_sr = self.config_parser["preprocessing"]["sr"]
+        target_sr = self.sr
         if sr != target_sr:
             audio_tensor = torchaudio.functional.resample(audio_tensor, sr, target_sr)
         return audio_tensor

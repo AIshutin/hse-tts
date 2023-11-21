@@ -11,13 +11,14 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from tts.base import BaseTrainer
-from tts.base.base_text_encoder import BaseTextEncoder
 from tts.logger.utils import plot_spectrogram_to_buf
-from tts.metric.utils import calc_cer, calc_wer
 from tts.utils import inf_loop, MetricTracker
 from tts.utils import get_WaveGlow
 from .. import waveglow
 from ..logger.wandb import WanDBWriter
+from numpy import inf
+import json
+import os
 
 
 def make_audio_item(wave, writer, config):
@@ -37,19 +38,25 @@ class Trainer(BaseTrainer):
             criterion,
             metrics,
             optimizer,
-            config,
             device,
             dataloaders,
             text_encoder,
+            main_config,
+            logger,
+            run_id,
             lr_scheduler=None,
             len_epoch=None,
             skip_oom=True,
+            **kwargs
     ):
         self.lr_scheduler = lr_scheduler
-        super().__init__(model, criterion, metrics, optimizer, config, device, dataloaders['train'])
+        config = json.loads(main_config)
+        config['trainer']['save_dir'] = os.path.join(config['trainer']['save_dir'], run_id)
+        super().__init__(model=model, criterion=criterion, metrics=metrics,
+                         optimizer=optimizer, device=device, logger=logger, 
+                         config=config)
         self.skip_oom = skip_oom
         self.text_encoder = text_encoder
-        self.config = config
         self.train_dataloader = dataloaders["train"]
         if len_epoch is None:
             # epoch-based training

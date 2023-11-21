@@ -17,24 +17,23 @@ echo $(ls mels | wc -l)
 
 mv mels data/datasets/ljspeech
 
-python3 preprocess.py -c tts/configs/preprocess.json
+python3 preprocess.py
 
 gdown https://drive.google.com/u/0/uc?id=1WsibBTsuRg_SF2Z6L6NFRTT-NjEy1oTx
 mkdir -p waveglow/pretrained_model/
 mv waveglow_256channels_ljs_v2.pt waveglow/pretrained_model/waveglow_256channels.pt
-
-
 ```
 
 ## Usage guide
 
 To train:
 ```shell
-python3 train.py -c tts/configs/all_deepspeech_small.json
+python3 train.py --config-name fastspeech2
 ```
 
-To measure quality:
-```shell
-gdown "https://drive.google.com/file/d/1DftKTAVPW7tHauL8H9cTzph3ozMMkE3F/view?usp=sharing" -O default_test_model/checkpoint.pth --fuzzy
-python3 test.py -c default_test_model/config.json -r default_test_model/checkpoint.pth -b 1
+To synthesize audio:
 ```
+python3 train.py --config-name inference_fs2 +trainer.checkpoint_path=default_test_model/model.pth
+```
+
+Feel free to change `tts/config/inference_fs2.yaml` to set texts & alphas for synthesis. Alternatively, you can use Hydra CLI features.

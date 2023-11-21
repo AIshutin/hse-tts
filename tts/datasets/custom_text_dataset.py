@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class CustomTextDataset(Dataset):
-    def __init__(self, texts, configurations, text_encoder,
-                config_parser, **kwargs):
+    def __init__(self, texts, configurations, text_encoder, **kwargs):
         super().__init__()
         self.samples = []
         
