@@ -1,17 +1,14 @@
-import argparse
-import collections
 import warnings
 
 import numpy as np
 import torch
+import hydra
+from omegaconf import DictConfig, OmegaConf
+from hydra.utils import instantiate
+import yaml
+import json
+from datetime import datetime
 
-import tts.loss as module_loss
-import tts.metric as module_metric
-import tts.model as module_arch
-from tts.trainer import Trainer
-from tts.utils import prepare_device
-from tts.utils.object_loading import get_dataloaders
-from tts.utils.parse_config import ConfigParser
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -23,85 +20,41 @@ torch.backends.cudnn.benchmark = False
 np.random.seed(SEED)
 
 
-def main(config):
-    logger = config.get_logger("train")
+@hydra.main(version_base=None, config_path="tts/configs/", config_name="fastspeech2")
+def main(config: DictConfig):
+    config2 = yaml.safe_load(OmegaConf.to_yaml(config))
+    run_id = datetime.now().strftime(r"%m%d_%H%M%S")
 
-    # text_encoder
-    text_encoder = config.get_text_encoder()
-
-    # setup data_loader instances
-    dataloaders = get_dataloaders(config, text_encoder)
-
-    # build model architecture, then print to console
-    model = config.init_obj(config["arch"], module_arch, n_class=len(text_encoder))
+    text_encoder = instantiate(config.text_encoder)
+    logger = instantiate(config.logger, main_config=json.dumps(config2), run_id=run_id)
+    device = instantiate(config.device)
+    model = instantiate(config.arch, n_class=len(text_encoder)).to(device)
     logger.info(model)
-
-    # prepare for (multi-device) GPU training
-    device, device_ids = prepare_device(config["n_gpu"])
-    model = model.to(device)
-    if len(device_ids) > 1:
-        model = torch.nn.DataParallel(model, device_ids=device_ids)
-
-    # get function handles of loss and metrics
-    loss_module = config.init_obj(config["loss"], module_loss).to(device)
+    loss = instantiate(config.loss).to(device)
     metrics = [
-        config.init_obj(metric_dict, module_metric, text_encoder=text_encoder)
-        for metric_dict in config["metrics"]
+        instantiate(el, text_encoder=text_encoder) for el in config.metrics
     ]
-
-    # build optimizer, learning rate scheduler. delete every line containing lr_scheduler for
-    # disabling scheduler
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = config.init_obj(config["optimizer"], torch.optim, trainable_params)
-    lr_scheduler = config.init_obj(config["lr_scheduler"], torch.optim.lr_scheduler, optimizer)
+    optimizer = instantiate(config.optimizer, params=trainable_params)
+    lr_scheduler = instantiate(config.lr_scheduler, optimizer=optimizer)
+    dataloaders = instantiate(config.data)
 
-    trainer = Trainer(
-        model,
-        loss_module,
-        metrics,
-        optimizer,
-        text_encoder=text_encoder,
-        config=config,
+    trainer = instantiate(
+        config.trainer,
+        model=model,
+        criterion=loss,
+        metrics=metrics,
         device=device,
-        dataloaders=dataloaders,
+        optimizer=optimizer,
         lr_scheduler=lr_scheduler,
-        len_epoch=config["trainer"].get("len_epoch", None)
+        text_encoder=text_encoder,
+        dataloaders=dataloaders,
+        logger=logger,
+        main_config=json.dumps(config2),
+        run_id=run_id
     )
-
     trainer.train()
 
 
 if __name__ == "__main__":
-    args = argparse.ArgumentParser(description="PyTorch Template")
-    args.add_argument(
-        "-c",
-        "--config",
-        default=None,
-        type=str,
-        help="config file path (default: None)",
-    )
-    args.add_argument(
-        "-r",
-        "--resume",
-        default=None,
-        type=str,
-        help="path to latest checkpoint (default: None)",
-    )
-    args.add_argument(
-        "-d",
-        "--device",
-        default=None,
-        type=str,
-        help="indices of GPUs to enable (default: all)",
-    )
-
-    # custom cli options to modify configuration from default values given in json file.
-    CustomArgs = collections.namedtuple("CustomArgs", "flags type target")
-    options = [
-        CustomArgs(["--lr", "--learning_rate"], type=float, target="optimizer;args;lr"),
-        CustomArgs(
-            ["--bs", "--batch_size"], type=int, target="data_loader;args;batch_size"
-        ),
-    ]
-    config = ConfigParser.from_args(args, options)
-    main(config)
+    main()

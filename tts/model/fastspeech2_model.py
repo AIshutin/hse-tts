@@ -103,7 +103,6 @@ class LengthRegulator(nn.Module):
             return output, mel_pos
 
 
-
 class EnergyRegulator(nn.Module):
     """ Energy Regulator """
 
