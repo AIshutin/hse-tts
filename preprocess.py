@@ -68,8 +68,8 @@ def main(config):
     # pitch_scaler = StandardScaler()
     min_pitch    = 1e9
     max_pitch    = -1e9
-    min_energy   = 1e9
-    max_energy   = -1e9 
+    min_energy   = 0.09309670329093933
+    max_energy   = 1.549446702003479
 
     for dtype in ['train', 'val']:
         for i, el in enumerate(tqdm(dataloaders[dtype].dataset)):

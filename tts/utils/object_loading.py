@@ -36,7 +36,7 @@ def get_dataloaders(configs: ConfigParser, text_encoder: BaseTextEncoder):
             "You must provide batch_size or batch_sampler for each split"
         if "batch_size" in params:
             bs = params["batch_size"]
-            shuffle = True
+            shuffle = split == "train"
             batch_sampler = None
         elif "batch_sampler" in params:
             batch_sampler = configs.init_obj(params["batch_sampler"], batch_sampler_module,
