@@ -35,7 +35,12 @@ class FastSpeech2Loss(nn.Module):
                 alignment, energy_hat, energy, **batch) -> Tensor:
         f = F.mse_loss
         loss_spectr = f(spectrogram_hat, spectrogram)
+        if pitch_hat.shape != pitch.shape:
+            pitch = torch.cat((pitch.real, pitch.imag), dim=-1)
         loss_pitch  = f(pitch_hat, pitch)
+
+        if batch.get('pitch_params_hat') is not None:
+            loss_pitch += f(batch['pitch_params_hat'], batch['pitch_params'])
         loss_align  = f(alignment_hat, alignment.log1p())
         loss_energy = f(energy_hat, energy)
         out = {
