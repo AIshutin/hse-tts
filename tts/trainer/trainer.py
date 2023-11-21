@@ -162,9 +162,9 @@ class Trainer(BaseTrainer):
         if is_train:
             batch["loss"].backward()
             self._clip_grad_norm()
-            self.optimizer.step()
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
+            self.optimizer.step()
         
         metrics.update("loss", batch["loss"].item())
         metrics.update("loss_spectrogram", batch["loss_spectrogram"].item())
