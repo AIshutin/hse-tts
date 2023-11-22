@@ -22,6 +22,9 @@ python3 preprocess.py
 gdown https://drive.google.com/u/0/uc?id=1WsibBTsuRg_SF2Z6L6NFRTT-NjEy1oTx
 mkdir -p waveglow/pretrained_model/
 mv waveglow_256channels_ljs_v2.pt waveglow/pretrained_model/waveglow_256channels.pt
+
+gdown https://drive.google.com/file/d/14CCYsCJlaQ5KUdY8vw6_xxbvx1ZuSQzw/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
+
 ```
 
 ## Usage guide
@@ -33,7 +36,7 @@ python3 train.py --config-name fastspeech2
 
 To synthesize audio:
 ```
-python3 train.py --config-name inference_fs2 +trainer.checkpoint_path=default_test_model/model.pth
+python3 train.py --config-name inference_fs2 +trainer.checkpoint_path=default_test_model/checkpoint.pth
 ```
 
 Feel free to change `tts/config/inference_fs2.yaml` to set texts & alphas for synthesis. Alternatively, you can use Hydra CLI features.
