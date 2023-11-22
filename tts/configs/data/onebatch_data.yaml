@@ -1,0 +1,80 @@
+train:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 10
+  num_workers: 2
+  shuffle: True
+  drop_last: True
+  collate_fn: 
+    _target_: tts.collate_fn.get_collate_fn
+  dataset:
+    _target_: tts.datasets.LJspeechDataset
+    text_encoder: ${text_encoder}
+    part: train
+    sr: ${preprocessing.sr}
+    max_audio_length: 20
+    max_text_length: 200
+    limit: 17
+val:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 10
+  num_workers: 2
+  shuffle: False
+  drop_last: False
+  collate_fn: 
+    _target_: tts.collate_fn.get_collate_fn
+  dataset:
+    _target_: tts.datasets.LJspeechDataset
+    text_encoder: ${text_encoder}
+    part: train
+    sr: ${preprocessing.sr}
+    max_audio_length: 20
+    max_text_length: 200
+    limit: 17
+test:
+  _target_: torch.utils.data.DataLoader
+  batch_size: 1
+  num_workers: 2
+  shuffle: False
+  drop_last: False
+  collate_fn: 
+    _target_: tts.collate_fn.get_collate_fn
+  dataset:
+    _target_: tts.datasets.CustomTextDataset
+    text_encoder: ${text_encoder}
+    texts:
+      - a warrant was issued for his apprehension, which was effected at kennington
+        on the 24th march.
+    configurations:
+    - duration: 1
+      energy: 1
+      pitch: 1
+    - duration: 1
+      energy: 2
+      pitch: 1
+    - duration: 1
+      energy: 1
+      pitch: 2
+    - duration: 1.2
+      energy: 1
+      pitch: 1
+    - duration: 0.8
+      energy: 1
+      pitch: 1
+    - duration: 1
+      energy: 1.2
+      pitch: 1
+    - duration: 1
+      energy: 0.8
+      pitch: 1
+    - duration: 1
+      energy: 1
+      pitch: 1.2
+    - duration: 1
+      energy: 1
+      pitch: 0.8
+    - duration: 1.2
+      energy: 1.2
+      pitch: 1.2
+    - duration: 0.8
+      energy: 0.8
+      pitch: 0.8
