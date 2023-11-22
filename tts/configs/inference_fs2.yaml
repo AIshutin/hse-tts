@@ -59,3 +59,4 @@ trainer:
   _target_: tts.trainer.Inferencer
   out_dir: synthesized_audios
   name: inference
+  visualize: wandb

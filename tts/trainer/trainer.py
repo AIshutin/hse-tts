@@ -222,7 +222,6 @@ class Trainer(BaseTrainer):
                     synthesized_hat = waveglow.inference.inference(spectrogram_hat, self.waveglow)
                 text = batch['text']
                 audio_path = batch['audio_path']
-                self.writer
                 rows[str(i) + audio_path[0]] = {
                     "text": text,
                     "synthesized_hat": make_audio_item(synthesized_hat, self.writer, self.config),

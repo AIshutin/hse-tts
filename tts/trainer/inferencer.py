@@ -5,6 +5,9 @@ from tqdm import tqdm
 from tts.utils import get_WaveGlow
 from .. import waveglow
 import json
+from tts.logger import get_visualizer
+from .trainer import make_audio_item
+import pandas as pd
 
 
 class Inferencer:
@@ -21,6 +24,7 @@ class Inferencer:
             out_dir,
             device,
             checkpoint_path,
+            main_config,
             **kwargs
     ):
         self.text_encoder = text_encoder
@@ -32,6 +36,13 @@ class Inferencer:
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
         self.waveglow = get_WaveGlow().to(device)
+
+        config = json.loads(main_config)
+        self.config = config
+        cfg_trainer = config["trainer"]
+        self.writer = get_visualizer(
+            config, self.logger, cfg_trainer["visualize"]
+        )
 
     @staticmethod
     def move_batch_to_device(batch, device: torch.device):
@@ -62,6 +73,7 @@ class Inferencer:
                 batches.append(batch)
 
             table = []
+            rows = {}
 
             for i, batch in enumerate(batches):
                 spectrogram_hat = batch['spectrogram_hat'].T.squeeze(-1).unsqueeze(0)
@@ -70,7 +82,7 @@ class Inferencer:
                 alpha_pitch = batch['alpha_pitch'][0].item()
                 alpha_energy = batch['alpha_energy'][0].item()
                 filename = f"{i + 1}-dur={alpha_dur:.2f}-pitch={alpha_pitch:.2f}-energy={alpha_energy:.2f}.wav"
-                waveglow.inference.inference(spectrogram_hat, self.waveglow, 
+                synthesized_hat = waveglow.inference.inference(spectrogram_hat, self.waveglow, 
                                             audio_path=self.out_dir / filename)
                 table.append(
                      {
@@ -81,6 +93,17 @@ class Inferencer:
                           "energy": alpha_energy
                      }
                 )
+                audio_path = batch['audio_path']
+                rows[str(i) + audio_path[0]] = {
+                    "text": text,
+                    "synthesized_hat": make_audio_item(synthesized_hat, self.writer, self.config),
+                    "duration": alpha_dur,
+                    "pitch": alpha_pitch,
+                    "energy": alpha_energy,
+                    "name": audio_path
+                }
+            
+            self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
             
             with open(self.out_dir / "description.json", "w") as file:
                 json.dump(table, file, indent=4)
