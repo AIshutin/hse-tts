@@ -11,14 +11,13 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from tts.base import BaseTrainer
+from tts.base.base_text_encoder import BaseTextEncoder
 from tts.logger.utils import plot_spectrogram_to_buf
+from tts.metric.utils import calc_cer, calc_wer
 from tts.utils import inf_loop, MetricTracker
 from tts.utils import get_WaveGlow
 from .. import waveglow
 from ..logger.wandb import WanDBWriter
-from numpy import inf
-import json
-import os
 
 
 def make_audio_item(wave, writer, config):
@@ -38,25 +37,20 @@ class Trainer(BaseTrainer):
             criterion,
             metrics,
             optimizer,
+            config,
             device,
             dataloaders,
             text_encoder,
-            main_config,
-            logger,
-            run_id,
             lr_scheduler=None,
             len_epoch=None,
             skip_oom=True,
             **kwargs
     ):
         self.lr_scheduler = lr_scheduler
-        config = json.loads(main_config)
-        config['trainer']['save_dir'] = os.path.join(config['trainer']['save_dir'], run_id)
-        super().__init__(model=model, criterion=criterion, metrics=metrics,
-                         optimizer=optimizer, device=device, logger=logger, 
-                         config=config)
+        super().__init__(model, criterion, metrics, optimizer, config, device, dataloaders['train'])
         self.skip_oom = skip_oom
         self.text_encoder = text_encoder
+        self.config = config
         self.train_dataloader = dataloaders["train"]
         if len_epoch is None:
             # epoch-based training
@@ -169,9 +163,9 @@ class Trainer(BaseTrainer):
         if is_train:
             batch["loss"].backward()
             self._clip_grad_norm()
+            self.optimizer.step()
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
-            self.optimizer.step()
         
         metrics.update("loss", batch["loss"].item())
         metrics.update("loss_spectrogram", batch["loss_spectrogram"].item())
@@ -222,6 +216,7 @@ class Trainer(BaseTrainer):
                     synthesized_hat = waveglow.inference.inference(spectrogram_hat, self.waveglow)
                 text = batch['text']
                 audio_path = batch['audio_path']
+                self.writer
                 rows[str(i) + audio_path[0]] = {
                     "text": text,
                     "synthesized_hat": make_audio_item(synthesized_hat, self.writer, self.config),

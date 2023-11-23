@@ -1,15 +1,26 @@
+import argparse
+import collections
 import warnings
+
 import numpy as np
 import torch
+
+import tts.loss as module_loss
+import tts.metric as module_metric
+import tts.model as module_arch
+from tts.trainer import Trainer
+from tts.utils import prepare_device
+from tts.utils.object_loading import get_dataloaders
+from tts.utils.parse_config import ConfigParser
 import pyworld as pw
+from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 from pathlib import Path
 import json
 import scipy
-from tts.audio.hparams_audio import filter_length, n_mel_channels, mel_fmax
+from tts.audio.hparams_audio import filter_length, hop_length, win_length, sampling_rate, \
+                                    n_mel_channels, mel_fmax
 from torchaudio.transforms import InverseMelScale
-import hydra
-from hydra.utils import instantiate
 
 
 def extract_pitch(wave, fs):
@@ -40,18 +51,21 @@ def wave2pitch(wave, sr):
 
 inverseMel = InverseMelScale(n_stft=filter_length, n_mels=n_mel_channels, f_max=mel_fmax)
 
-
 def spectrogram2energy(spectrogram):
     spectrogram = spectrogram[0]
     out = inverseMel(spectrogram.T).T
     return out.norm(2, dim=-1).reshape(-1).numpy()
 
 
-@hydra.main(version_base=None, config_path="tts/configs", config_name="preprocess")
 def main(config):
-    dataloaders = instantiate(config.data)
-    sr = config.preprocessing.sr
+    # text_encoder
+    text_encoder = config.get_text_encoder()
 
+    # setup data_loader instances
+    dataloaders = get_dataloaders(config, text_encoder)
+    sr = dataloaders['train'].dataset.config_parser["preprocessing"]["sr"]
+
+    # pitch_scaler = StandardScaler()
     min_pitch    = 1e9
     max_pitch    = -1e9
     min_energy   = 0.09309670329093933
@@ -67,12 +81,12 @@ def main(config):
             pitch = wave2pitch(el['audio'], sr).reshape(-1)
             np.save(pitch_path, pitch)
 
-            energy = spectrogram2energy(el['spectrogram'])
-            np.save(energy_path, energy)
+            #energy = spectrogram2energy(el['spectrogram'])
+            #np.save(energy_path, energy)
 
             if dtype == "train":
-                max_energy = max(max_energy, energy.max().item())
-                min_energy = min(min_energy, energy.min().item())
+                #max_energy = max(max_energy, energy.max().item())
+                #min_energy = min(min_energy, energy.min().item())
                 max_pitch = max(max_pitch, pitch.max())
                 min_pitch = min(min_pitch, pitch.min())
 
@@ -91,4 +105,36 @@ def main(config):
     
 
 if __name__ == "__main__":
-    main()
+    args = argparse.ArgumentParser(description="PyTorch Template")
+    args.add_argument(
+        "-c",
+        "--config",
+        default=None,
+        type=str,
+        help="config file path (default: None)",
+    )
+    args.add_argument(
+        "-r",
+        "--resume",
+        default=None,
+        type=str,
+        help="path to latest checkpoint (default: None)",
+    )
+    args.add_argument(
+        "-d",
+        "--device",
+        default=None,
+        type=str,
+        help="indices of GPUs to enable (default: all)",
+    )
+
+    # custom cli options to modify configuration from default values given in json file.
+    CustomArgs = collections.namedtuple("CustomArgs", "flags type target")
+    options = [
+        CustomArgs(["--lr", "--learning_rate"], type=float, target="optimizer;args;lr"),
+        CustomArgs(
+            ["--bs", "--batch_size"], type=int, target="data_loader;args;batch_size"
+        ),
+    ]
+    config = ConfigParser.from_args(args, options)
+    main(config)

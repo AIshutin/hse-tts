@@ -21,25 +21,22 @@ class Inferencer:
             dataloaders,
             text_encoder,
             logger,
-            out_dir,
             device,
-            checkpoint_path,
-            main_config,
+            config,
             **kwargs
     ):
         self.text_encoder = text_encoder
         self.dataloader = dataloaders["test"]
-        model.load_state_dict(torch.load(checkpoint_path, device)["state_dict"])
         self.model = model
         self.device = device
         self.logger = logger
-        self.out_dir = Path(out_dir)
-        self.out_dir.mkdir(parents=True, exist_ok=True)
         self.waveglow = get_WaveGlow().to(device)
-
-        config = json.loads(main_config)
         self.config = config
         cfg_trainer = config["trainer"]
+        checkpoint_path = cfg_trainer['checkpoint_path']
+        model.load_state_dict(torch.load(checkpoint_path, device)["state_dict"])
+        self.out_dir = Path(cfg_trainer['out_dir'])
+        self.out_dir.mkdir(parents=True, exist_ok=True)
         self.writer = get_visualizer(
             config, self.logger, cfg_trainer["visualize"]
         )

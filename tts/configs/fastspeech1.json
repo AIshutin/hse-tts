@@ -1,0 +1,155 @@
+{
+  "name": "fastspeach1",
+  "n_gpu": 1,
+  "preprocessing": {
+    "sr": 22050
+  },
+  "arch": {
+    "type": "FastSpeechModel",
+    "args": {
+      "vocab_size": 300,
+      "max_seq_len": 3000,
+      "encoder_dim": 256,
+      "encoder_n_layer": 4,
+      "encoder_head": 2,
+      "encoder_conv1d_filter_size": 1024,
+      "decoder_dim": 256,
+      "decoder_n_layer": 4,
+      "decoder_head": 2,
+      "decoder_conv1d_filter_size": 1024,
+      "fft_conv1d_kernel": [9, 1],
+      "fft_conv1d_padding": [4, 0],
+      "duration_predictor_filter_size": 256,
+      "duration_predictor_kernel_size": 3,
+      "dropout": 0.1,
+      "PAD": 0,
+      "num_mels": 80
+    }
+  },
+  "data": {
+    "train": {
+      "batch_size": 48,
+      "num_workers": 0,
+      "datasets": [
+        {
+          "type": "LJspeechDataset",
+          "args": {
+            "part": "train"
+          }
+        }
+      ]
+    },
+    "val": {
+      "batch_size": 48,
+      "num_workers": 0,
+      "datasets": [
+        {
+          "type": "LJspeechDataset",
+          "args": {
+            "part": "test"
+          }
+        }
+      ]
+    },
+    "test": {
+      "batch_size": 1,
+      "num_workers": 0,
+      "datasets": [
+        {
+          "type": "CustomTextDataset",
+          "args": {
+            "texts": [
+              "A defibrillator is a device that gives a high energy electric shock to the heart of someone who is in cardiac arrest",
+              "Massachusetts Institute of Technology may be best known for its math, science and engineering education",
+              "Wasserstein distance or Kantorovich Rubinstein metric is a distance function defined between probability distributions on a given metric space"
+            ],
+            "configurations": [
+              {
+                "duration": 1.0,
+                "energy": 1.0,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.2,
+                "energy": 1.0,
+                "pitch": 1.0
+              },
+              {
+                "duration": 0.8,
+                "energy": 1.0,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.0,
+                "energy": 1.2,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.0,
+                "energy": 0.8,
+                "pitch": 1.0
+              },
+              {
+                "duration": 1.0,
+                "energy": 1.0,
+                "pitch": 1.2
+              },
+              {
+                "duration": 1.0,
+                "energy": 1.0,
+                "pitch": 0.8
+              },
+              {
+                "duration": 1.2,
+                "energy": 1.2,
+                "pitch": 1.2
+              },
+              {
+                "duration": 0.8,
+                "energy": 0.8,
+                "pitch": 0.8
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "optimizer": {
+    "type": "Adam",
+    "args": {
+      "weight_decay": 1e-6,
+      "lr": 1e-3,
+      "betas": [0.9, 0.98],
+      "eps": 1e-9
+    }
+  },
+  "loss": {
+    "type": "FastSpeechLoss",
+    "args": {}
+  },
+  "metrics": [
+  ],
+  "lr_scheduler": {
+    "type": "OneCycleLR",
+    "args": {
+      "steps_per_epoch": 210,
+      "epochs": 201,
+      "anneal_strategy": "cos",
+      "max_lr": 1e-3,
+      "pct_start": 0.1
+    }
+  },
+  "trainer": {
+    "epochs": 200,
+    "save_dir": "saved/",
+    "save_period": 10,
+    "verbosity": 2,
+    "monitor": "min val_loss",
+    "early_stop": 100,
+    "visualize": "wandb",
+    "wandb_project": "tts_project",
+    "len_epoch": 210,
+    "grad_norm_clip": 1
+  }
+}

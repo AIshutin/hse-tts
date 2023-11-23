@@ -45,14 +45,13 @@ class MultiHeadAttention(nn.Module):
         self.d_v = d_v
         self.d_model = d_model
 
-        self.layer_norm = nn.LayerNorm(d_model)
-
         self.w_qs = nn.Linear(d_model, n_head * d_k)
         self.w_ks = nn.Linear(d_model, n_head * d_k)
         self.w_vs = nn.Linear(d_model, n_head * d_v)
 
         self.attention = ScaledDotProductAttention(
             temperature=d_k**0.5) 
+        self.layer_norm = nn.LayerNorm(d_model)
 
         self.fc = nn.Linear(n_head * d_v, d_model)
         nn.init.xavier_normal_(self.fc.weight)
@@ -78,7 +77,6 @@ class MultiHeadAttention(nn.Module):
         sz_b, len_v, _ = v.size()
 
         residual = q
-        q = self.layer_norm(q)
 
         q = self.w_qs(q).view(sz_b, len_q, n_head, d_k)
         k = self.w_ks(k).view(sz_b, len_k, n_head, d_k)
@@ -107,7 +105,6 @@ class PositionwiseFeedForward(nn.Module):
     def __init__(self, d_in, d_hid, model_config, dropout=0.1):
         super().__init__()
 
-        self.layer_norm = nn.LayerNorm(d_in)
         # Use Conv1D
         # position-wise
         self.w_1 = nn.Conv1d(
@@ -116,16 +113,17 @@ class PositionwiseFeedForward(nn.Module):
         self.w_2 = nn.Conv1d(
             d_hid, d_in, kernel_size=model_config.fft_conv1d_kernel[1], padding=model_config.fft_conv1d_padding[1])
 
+        self.layer_norm = nn.LayerNorm(d_in)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         residual = x
-        x = self.layer_norm(x)
         output = x.transpose(1, 2)
         output = self.w_2(F.relu(self.w_1(output)))
         output = output.transpose(1, 2)
         output = self.dropout(output)
         output = self.layer_norm(output + residual)
+
         return output
 
 

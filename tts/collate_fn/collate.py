@@ -147,6 +147,3 @@ def collate_fn_tensor(batch: List[dict]):
     cut_list = list(range(batchsize))
     output = reprocess_tensor(batch, cut_list)
     return output
-
-def get_collate_fn():
-    return collate_fn_tensor

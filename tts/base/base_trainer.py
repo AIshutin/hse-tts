@@ -8,7 +8,6 @@ from tts.base import BaseModel
 from tts.logger import get_visualizer
 import numpy as np
 import logging
-from pathlib import Path
 
 
 class BaseTrainer:
@@ -17,9 +16,10 @@ class BaseTrainer:
     """
 
     def __init__(self, model: BaseModel, criterion, metrics, optimizer, config, device, 
-                 logger):
+                 train_dataloader):
         self.device = device
-        self.logger = logger
+        self.config = config
+        self.logger = config.get_logger("trainer", config["trainer"]["verbosity"])
 
         self.model = model
         self.criterion = criterion
@@ -29,7 +29,6 @@ class BaseTrainer:
         # for interrupt saving
         self._last_epoch = 0
 
-        self.config = config
         cfg_trainer = config["trainer"]
         self.epochs = cfg_trainer["epochs"]
         self.save_period = cfg_trainer["save_period"]
@@ -50,15 +49,15 @@ class BaseTrainer:
 
         self.start_epoch = 1
 
-        self.checkpoint_dir = Path(cfg_trainer["save_dir"])
+        self.checkpoint_dir = config.save_dir
 
         # setup visualization writer instance
         self.writer = get_visualizer(
             config, self.logger, cfg_trainer["visualize"]
         )
 
-        if config.get("resume") is not None:
-            self._resume_checkpoint(config["resume"])
+        if config.resume is not None:
+            self._resume_checkpoint(config.resume)
 
     @abstractmethod
     def _train_epoch(self, epoch):

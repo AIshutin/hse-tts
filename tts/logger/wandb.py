@@ -9,6 +9,7 @@ class WanDBWriter:
     def __init__(self, config, logger):
         self.writer = None
         self.selected_module = ""
+
         try:
             import wandb
             wandb.login()
@@ -18,7 +19,7 @@ class WanDBWriter:
 
             wandb.init(
                 project=config['trainer'].get('wandb_project'),
-                config=config
+                config=config.config
             )
             wandb.run.log_code('.')
             self.wandb = wandb

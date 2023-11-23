@@ -22,7 +22,10 @@ class XPredictor(nn.Module):
         self.filter_size = model_config.x_predictor_filter_size
         self.kernel = model_config.x_predictor_kernel_size
         self.conv_output_size = model_config.x_predictor_filter_size
-        self.dropout = model_config.x_predictor_dropout
+        try:
+            self.dropout = model_config.x_predictor_dropout
+        except:
+            self.dropout = model_config.dropout
 
         self.conv_net = nn.Sequential(
             Transpose(-1, -2),
@@ -50,6 +53,7 @@ class XPredictor(nn.Module):
     def forward(self, encoder_output):
         encoder_output = self.conv_net(encoder_output)
         out = self.linear_layer(encoder_output)
+        out = out.squeeze()
         return out
 
 
@@ -63,21 +67,12 @@ class LengthRegulator(nn.Module):
     def LR(self, x, duration_predictor_output, mel_max_length=None):
         expand_max_len = torch.max(
             torch.sum(duration_predictor_output, -1), -1)[0].item()
-        expand_max_len = max(1, int(expand_max_len))
+        expand_max_len = int(expand_max_len)
         alignment = torch.zeros(duration_predictor_output.size(0),
                                 expand_max_len,
                                 duration_predictor_output.size(1)).numpy()
-        try:
-            alignment = create_alignment(alignment,
+        alignment = create_alignment(alignment,
                                      duration_predictor_output.cpu().numpy())
-        except Exception as exp:
-            print(exp)
-            print(x.shape)
-            print(duration_predictor_output.shape)
-            print(duration_predictor_output)
-            print(duration_predictor_output.min(), duration_predictor_output.max())
-            print(expand_max_len, 'expand max len')
-            raise exp
         alignment = torch.from_numpy(alignment).to(x.device)
 
         output = alignment @ x
@@ -87,12 +82,13 @@ class LengthRegulator(nn.Module):
         return output
 
     def forward(self, x, alpha=1.0, target=None, mel_max_length=None):
-        duration_predictor_output = self.duration_predictor(x).reshape(x.shape[0], -1)
+        duration_predictor_output = self.duration_predictor(x)
+
         if target is not None:
             output = self.LR(x, target, mel_max_length)
             return output, duration_predictor_output
         else:
-            t = (duration_predictor_output.expm1() * alpha).round().to(torch.long).clamp(min=0)
+            t = (duration_predictor_output.expm1() * alpha).round().to(torch.long)
             if len(t.shape) == 1:
                 t = t.unsqueeze(0)
             output = self.LR(x, t)
@@ -101,6 +97,7 @@ class LengthRegulator(nn.Module):
                 torch.Tensor([i + 1 for i in range(output.size(1))])
             ]).long().to(x.device)
             return output, mel_pos
+
 
 
 class EnergyRegulator(nn.Module):
@@ -116,7 +113,7 @@ class EnergyRegulator(nn.Module):
         self.div_quant = (self.max_energy - self.min_energy) / self.n_quant
 
     def forward(self, x, alpha=1.0, target=None, mel_lengths=None):
-        energy_predictor_output = self.energy_predictor(x).reshape(x.shape[0], -1)
+        energy_predictor_output = self.energy_predictor(x)
 
         with torch.no_grad():
             t = energy_predictor_output if target is None else target
@@ -128,6 +125,8 @@ class EnergyRegulator(nn.Module):
             mask = get_mask_from_lengths(mel_lengths).to(quant_id.device)
             quant_id = quant_id * mask
             energy_predictor_output = energy_predictor_output * mask
+
+        # print('quant_ids', quant_id.min(), quant_id.max())
 
         energy_embed = self.energy_embs(quant_id)
         return energy_embed, energy_predictor_output
@@ -154,6 +153,8 @@ class PitchRegulator(nn.Module):
         for c, l, m, s in zip(pitch_contour, lengths, means, stds):
             c = ((c[:l] - m) / s).detach().cpu().numpy()
             spec, _ = cwt(c, scales=self.width)
+            # print('pitch spec shape', spec.shape, c.shape)
+            # print(list(_))
             spec = torch.tensor(spec, device=pitch_contour.device).T
             spec = F.pad(spec, (0, 0, 0, max_lengths - spec.shape[0]))
             specs.append(spec.unsqueeze(0))
@@ -169,9 +170,11 @@ class PitchRegulator(nn.Module):
         return torch.cat(contours)
 
     def forward(self, x, alpha=1.0, target=None, mel_lengths=None):
+        # print(x.shape, flush=True)
         predictor_output = self.predictor(x)
         if len(predictor_output.shape) < 3:
             predictor_output = predictor_output.unsqueeze(0)
+        # print('predictor_output_shape', predictor_output.shape)
         predictor_spec = predictor_output[:, :, :-2]
         predictor_params = predictor_output[:, :, -2:].mean(dim=1)
 
@@ -185,6 +188,7 @@ class PitchRegulator(nn.Module):
             target_spec = self.pitch_contour2spec(target, mel_lengths, 
                                                   target_means, target_stds)
             contour = target
+            # print(target_spec.shape, 'target_spec_shape')
         else:
             predictor_spec_complex = torch.complex(
                 predictor_spec[:, :, :self.spec_width],
@@ -200,6 +204,11 @@ class PitchRegulator(nn.Module):
         if mel_lengths is not None:
             mask = get_mask_from_lengths(mel_lengths).to(quant_id.device)
             quant_id = quant_id * mask
+            #print('predictor_spec', predictor_spec.shape, mask.shape)
+            #print('predictor_output', predictor_output.shape)
+            #print(predictor_spec)
+            #print(target_spec)
+            #print()
             predictor_spec = predictor_spec * mask[:, :, None]
             assert(((target_spec * mask[:, :, None]) == target_spec).all())
         

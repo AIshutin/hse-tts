@@ -23,7 +23,7 @@ gdown https://drive.google.com/u/0/uc?id=1WsibBTsuRg_SF2Z6L6NFRTT-NjEy1oTx
 mkdir -p waveglow/pretrained_model/
 mv waveglow_256channels_ljs_v2.pt waveglow/pretrained_model/waveglow_256channels.pt
 
-gdown https://drive.google.com/file/d/14CCYsCJlaQ5KUdY8vw6_xxbvx1ZuSQzw/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
+gdown https://drive.google.com/file/d/1jTE8Bpd5J6SsA4vZFg3C-7DgU-5g9bgd/view?usp=sharing -O default_test_model/checkpoint.pth --fuzzy
 
 ```
 
@@ -31,12 +31,14 @@ gdown https://drive.google.com/file/d/14CCYsCJlaQ5KUdY8vw6_xxbvx1ZuSQzw/view?usp
 
 To train:
 ```shell
-python3 train.py --config-name fastspeech2
+python3 train.py -c tts/configs/fastspeech2.json
 ```
+Then select the best model according to the validation loss
+
 
 To synthesize audio:
 ```
-python3 train.py --config-name inference_fs2 +trainer.checkpoint_path=default_test_model/checkpoint.pth
+python3 train.py -c tts/configs/fastspeech2_inference.json
 ```
 
-Feel free to change `tts/config/inference_fs2.yaml` to set texts & alphas for synthesis. Alternatively, you can use Hydra CLI features.
+Feel free to change `tts/config/fastspeech2_inference.json` to set texts & alphas for synthesis.
